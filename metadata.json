@@ -1,0 +1,9 @@
+{
+  "name": "AGRI-INTELLIGENCE SYSTEM 360°",
+  "description": "The world's most advanced agricultural platform integrating AI, IoT, and comprehensive farm management.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
