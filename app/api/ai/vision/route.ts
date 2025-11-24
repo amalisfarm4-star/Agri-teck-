@@ -1,38 +1,41 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenAI, Type } from "@google/genai";
+import { NextResponse } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const { image, language } = await req.json();
+    const { prompt, imageBase64 } = await req.json();
 
-    const prompt = `Analyze this agricultural image. Identify diseases, pests, or nutrient deficiencies. Language: ${language}. Return JSON.`;
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json(
+        { error: "Missing GEMINI_API_KEY" },
+        { status: 500 }
+      );
+    }
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: {
-        parts: [
-          { inlineData: { mimeType: 'image/jpeg', data: image } },
-          { text: prompt }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            diagnosis: { type: Type.STRING },
-            confidence: { type: Type.NUMBER },
-            recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
-            severity: { type: Type.STRING, enum: ["low", "medium", "high"] }
-          }
-        }
-      }
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+    const model = genAI.getGenerativeModel({
+      model: "gemini-pro-vision",
     });
 
-    return NextResponse.json(JSON.parse(response.text || "{}"));
-  } catch (error) {
-    return NextResponse.json({ error: "AI Processing Failed" }, { status: 500 });
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          mimeType: "image/jpeg",
+          data: imageBase64,
+        },
+      },
+      { text: prompt },
+    ]);
+
+    const output = result.response.text();
+
+    return NextResponse.json({ result: output });
+  } catch (err) {
+    console.error("Vision API error:", err);
+    return NextResponse.json(
+      { error: "Errore durante l'analisi dell'immagine." },
+      { status: 500 }
+    );
   }
 }
